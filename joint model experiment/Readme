@@ -1,1 +1,3 @@
+The issue is after solving all other errors I still got [<pad>] for every prediction string of the ASR model. That may lies on some issues while merging the wav2vec2 and berd2 model, but I just cannot figure out where goes wrong specifically. I only save the ".pt" model files of the joint model. And the materials I used include the "cantonese-tokenized-wav2vec2-model", "cantonese-tokenized-wav2vec2-processor", "lang_tokenizer" and "language_model" folders.
 
+for the add
