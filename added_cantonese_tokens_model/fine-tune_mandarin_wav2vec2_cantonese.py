@@ -40,7 +40,11 @@ chars_to_ignore_regex = '[\丶\,\?\.\!\-\;\:"\“\%\‘\”\�\．\⋯\！\－\
 
 import string
 def remove_special_characters(batch):
-    sen = re.sub(chars_to_ignore_regex, '', batch["sentence"]).lower() + " "
+    sentence = batch["sentence"]
+    if not isinstance(sentence, str):
+        print(f"Non-string value encountered: {sentence}")
+        return batch  # 直接返回batch，跳过非字符串的情况
+    sen = re.sub(chars_to_ignore_regex, '', sentence).lower() + " "
     if "d" in sen:
         if len([c for c in sen if c in string.ascii_lowercase]) == 1:
             sen = sen.replace("d", "啲")
@@ -57,8 +61,8 @@ def check_dataset(batch):
 common_voice_train = common_voice_train.map(check_dataset, batched=True)
 common_voice_test = common_voice_test.map(check_dataset, batched=True)
 
-common_voice_train = common_voice_train.map(remove_special_characters, batched=True)
-common_voice_test = common_voice_test.map(remove_special_characters, batched=True)
+common_voice_train = common_voice_train.map(remove_special_characters, batched=False)
+common_voice_test = common_voice_test.map(remove_special_characters, batched=False)
 
 def extract_all_chars(batch):
     all_text = " ".join(batch["sentence"])
@@ -112,7 +116,9 @@ common_voice_train = common_voice_train.map(load_and_resample, remove_columns=co
 common_voice_test = common_voice_test.map(load_and_resample, remove_columns=common_voice_test.column_names, batch_size=1, num_proc=1, cache_file_name=temp_file_test)
 
 def prepare_dataset(batch):
-    batch["input_values"] = processor(batch["speech"], sampling_rate=batch["sampling_rate"]).input_values
+    # 这里假设batch["sampling_rate"]是一个包含单个值的列表
+    sampling_rate = batch["sampling_rate"][0] if isinstance(batch["sampling_rate"], list) else batch["sampling_rate"]
+    batch["input_values"] = processor(batch["speech"], sampling_rate=sampling_rate).input_values
     with processor.as_target_processor():
         batch["labels"] = processor(batch["target_text"]).input_ids
     return batch
@@ -170,7 +176,26 @@ def compute_metrics(pred):
     cer = cer_metric.compute(predictions=pred_str, references=label_str)
     return {"cer": cer}
 
-model = Wav2Vec2ForCTC.from_pretrained(args.model_dir)
+# 新增：加载预训练模型的状态字典
+state_dict = torch.load(f"{args.model_dir}/pytorch_model.bin")
+
+# 新增：删除原来的 lm_head 层权重和偏置
+if 'lm_head.weight' in state_dict:
+    del state_dict['lm_head.weight']
+if 'lm_head.bias' in state_dict:
+    del state_dict['lm_head.bias']
+
+# 新增：加载模型
+model = Wav2Vec2ForCTC.from_pretrained(args.model_dir, state_dict=state_dict)
+
+# 新增：重新初始化 lm_head 层
+model.lm_head = torch.nn.Linear(model.config.hidden_size, len(processor.tokenizer))
+model.lm_head.weight.data.normal_(mean=0.0, std=model.config.initializer_range)
+model.lm_head.bias.data.zero_()
+
+# 新增：保存模型和处理器
+model.save_pretrained("./wav2vec2-large-xlsr-cantonese")
+processor.save_pretrained("./wav2vec2-large-xlsr-cantonese")
 
 model.config.gradient_checkpointing = True
 model.config.attention_dropout = 0.1
