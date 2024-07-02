@@ -1,10 +1,1 @@
-Runned fine-tune_mandarin_wav2vec2_cantonese.py but always got the: 
-RuntimeError: Error(s) in loading state_dict for Wav2Vec2ForCTC:
-	size mismatch for lm_head.weight: copying a param with shape torch.Size([3970, 1024]) from checkpoint, the shape in current model is torch.Size([3503, 1024]).
-	size mismatch for lm_head.bias: copying a param with shape torch.Size([3970]) from checkpoint, the shape in current model is torch.Size([3503]).
-Tried many ways to solve/ work aroud it but failed.
 
-It's because I added some Cantonese tokens to the Mandarin Wav2vec2 model, to let it recognize Cantonese. I falied to adjust the embedding layers to reshape the lm_head of the model.
-
-And also I tried to write a minimum python file named "modify_lm_head.py" to tackle this issue. I'll upload some versions of it representing different methods(failed though). Through the ouput of this one you can see that the lm_head shape can be modified in right way before saving the model, but after that it's the same error.(really weird)
-I also wanted to try "peft library" but the python versions available on the service are no newer than 3.6 and this version doesn't support it.
