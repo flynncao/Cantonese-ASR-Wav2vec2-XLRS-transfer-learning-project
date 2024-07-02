@@ -1,8 +1,0 @@
-nohup: ignoring input
-Some weights of Wav2Vec2ForCTC were not initialized from the model checkpoint at /scratch/s5600502/thesis_project/mandarin_cantonese/cantonese-tokenized-wav2vec2-model and are newly initialized because the shapes did not match:
-- lm_head.weight: found shape torch.Size([3970, 1024]) in the checkpoint and torch.Size([3503, 1024]) in the model instantiated
-- lm_head.bias: found shape torch.Size([3970]) in the checkpoint and torch.Size([3503]) in the model instantiated
-You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
-vocab_size: 3970
-lm_head weight shape: torch.Size([3970, 1024])
-lm_head bias shape: torch.Size([3970])
