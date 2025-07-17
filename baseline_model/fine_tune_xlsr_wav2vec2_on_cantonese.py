@@ -1,5 +1,24 @@
 # fine_tune_xlsr_wav2vec2_on_cantonese.py
-
+"""
+A data collator class for CTC (Connectionist Temporal Classification) with padding functionality.
+This class handles the batching and padding of input features and labels for wav2vec2 model training.
+It processes audio features and their corresponding transcription labels, ensuring proper padding
+and tensor conversion.
+Args:
+	processor (Wav2Vec2Processor): The wav2vec2 processor for handling inputs and labels
+	padding (Union[bool, str]): The padding strategy to use. Defaults to True.
+	max_length (Optional[int]): Maximum length for input features padding. Defaults to None.
+	max_length_labels (Optional[int]): Maximum length for labels padding. Defaults to None.
+	pad_to_multiple_of (Optional[int]): Pad input features to be multiple of this value. Defaults to None.
+	pad_to_multiple_of_labels (Optional[int]): Pad labels to be multiple of this value. Defaults to None.
+Methods:
+	__call__(features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
+		Processes a batch of features to create padded tensors suitable for model training.
+		Args:
+			features: List of dictionaries containing input values and labels
+		Returns:
+			Dict containing padded input tensors and processed labels with -100 for padding tokens
+"""
 import json
 import random
 import re
@@ -17,6 +36,11 @@ from transformers import (Trainer, TrainingArguments, Wav2Vec2CTCTokenizer,
                           Wav2Vec2FeatureExtractor, Wav2Vec2ForCTC,
                           Wav2Vec2Processor)
 
+print(torch.cuda.is_available())
+print(torch.cuda.device_count())
+if torch.cuda.is_available():
+    print(torch.cuda.get_device_name(0))
+
 import argparse
 parser = argparse.ArgumentParser() 
 parser.add_argument('--model', type=str, default="facebook/wav2vec2-large-xlsr-53")
@@ -27,9 +51,9 @@ args = parser.parse_args()
 
 print(f"args: {args}")
 
-# 从本地磁盘加载数据集
-common_voice_train = load_from_disk("./common_voice_train")
-common_voice_test = load_from_disk("./common_voice_test")
+# 从本地磁盘加载数据集 Load Cantonese language only 
+common_voice_train = load_dataset("common_voice", "zh-HK", split="train")
+common_voice_test = load_dataset("common_voice", "zh-HK", split="test")
 
 unused_cols = ["accent", "age", "client_id", "down_votes", "gender", "locale", "segment", "up_votes"]
 common_voice_train = common_voice_train.remove_columns(unused_cols)
@@ -102,6 +126,7 @@ common_voice_train = common_voice_train.map(prepare_dataset, remove_columns=comm
 common_voice_test = common_voice_test.map(prepare_dataset, remove_columns=common_voice_test.column_names, batch_size=-1, num_proc=10, batched=True,)
 
 @dataclass
+
 class DataCollatorCTCWithPadding:
     processor: Wav2Vec2Processor
     padding: Union[bool, str] = True
