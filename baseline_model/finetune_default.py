@@ -1,5 +1,4 @@
 
-# %%
 import json
 import random
 import re
@@ -23,8 +22,6 @@ if torch.cuda.is_available():
     print(torch.cuda.get_device_name(0))
 
 
-
-# %%
 import argparse
 parser = argparse.ArgumentParser() 
 parser.add_argument('--model', type=str, default="facebook/wav2vec2-large-xlsr-53")
@@ -38,7 +35,7 @@ print(f"args: {args}")
 
 
 
-# %%
+
 # 从本地磁盘加载数据集 Load Cantonese language only 
 common_voice_train = load_dataset("mozilla-foundation/common_voice_13_0", "zh-HK", split="train")
 common_voice_test = load_dataset("mozilla-foundation/common_voice_13_0", "zh-HK", split="test")
@@ -49,13 +46,9 @@ common_voice_test = common_voice_test.remove_columns(unused_cols)
 
 
 
-# %%
-# test if the duration column is added
-print(common_voice_train[0])
-print(common_voice_test[0])
 
 
-# %%
+
 # data preprocessing
 
 chars_to_ignore_regex = '[\丶\,\?\.\!\-\;\:"\“\%\‘\”\�\．\⋯\！\－\：\–\。\》\,\）\,\？\；\～\~\…\︰\，\（\」\‧\《\﹔\、\—\／\,\「\﹖\·\']'
@@ -94,17 +87,14 @@ with open("vocab.json", "w") as vocab_file:
     json.dump(vocab_dict, vocab_file)
 
 
-# %%
+
 # load datasets and resampling, the modern way
 from datasets import Audio
 common_voice_train = common_voice_train.cast_column("audio", Audio(sampling_rate=16000)) # reinterpret this column ("audio") as a certain type, with new settings
 common_voice_test = common_voice_test.cast_column("audio", Audio(sampling_rate=16000))
 
 
-# %%
-common_voice_test
 
-# %%
 # --- 3. Define the prepare_dataset function (like your Whisper one) ---
 tokenizer = Wav2Vec2CTCTokenizer("./vocab.json", unk_token="[UNK]", pad_token="[PAD]", word_delimiter_token="|")
 
@@ -115,10 +105,7 @@ processor.save_pretrained("./wav2vec2-large-xlsr-cantonese")
 
 
 
-# %%
-common_voice_test[0]
 
-# %%
 def prepare_dataset_for_batching(batch, processor_obj=None):
     
     # Calculate durations first to filter
@@ -195,12 +182,10 @@ test_filtered = original_test_len - len(common_voice_test)
 print(f"Filtered {train_filtered} items from training set")
 print(f"Filtered {test_filtered} items from test set")
 
+print(common_voice_train[0])
+print(common_voice_test[0])
 
 
-# %%
-common_voice_train[0]
-
-# %%
 # Define a data collator for CTC with padding and masking
 @dataclass
 
@@ -237,7 +222,7 @@ class DataCollatorCTCWithPadding:
 
         return batch
 
-# %%
+
 # Metrics and model initialization, feature extractor, and model loading
 import evaluate
 data_collator = DataCollatorCTCWithPadding(
@@ -286,11 +271,10 @@ if not args.unfreeze:
     model.freeze_feature_extractor()
 
 
-# %%
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 print(f"Using device: {device}")
 
-# %%
+
 # # Configure PyTorch Dynamo to suppress errors during optimization
 # import torch._dynamo
 # torch._dynamo.config.suppress_errors = True
