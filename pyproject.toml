@@ -10,3 +10,8 @@ dependencies = [
     "huggingface-hub",
     "numpy",
 ]
+
+[[tool.uv.index]]
+name = "torch==2.6.0+cu118"
+url = "https://download.pytorch.org/whl/cu118"
+default = true
