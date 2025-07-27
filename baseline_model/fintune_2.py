@@ -441,15 +441,13 @@ processor.save_pretrained("./wav2vec2-large-xlsr-cantonese")
 # 
 common_voice_test[0]
 
-# 
 def prepare_dataset_for_batching(batch, processor_obj=None):
-    
     # Calculate durations first to filter
     audio_arrays = [item["array"] for item in batch["audio"]]
     sampling_rates = [item["sampling_rate"] for item in batch["audio"]]
     durations = [len(arr) / sr for arr, sr in zip(audio_arrays, sampling_rates)]
     
-    # Create mask for items <= 15 seconds
+    # Create mask for items <= 10 seconds
     valid_mask = [d <= 10.0 for d in durations]
     
     # Filter all batch components
@@ -462,7 +460,7 @@ def prepare_dataset_for_batching(batch, processor_obj=None):
         return {
             "input_values": [],
             "labels": [],
-            "input_length": []
+            "length": []  # NEW: Add empty length list
         }
     
     # Process audio inputs
@@ -481,13 +479,16 @@ def prepare_dataset_for_batching(batch, processor_obj=None):
             padding=False,
         ).input_ids
 
-    # Return only the three required lists
+    # NEW: Calculate audio lengths in samples (critical for grouping)
+    audio_lengths = [len(arr) for arr in audio_arrays]  # Number of audio samples
+    
     return {
         "input_values": model_inputs.input_values,
         "labels": labels,
-        "input_length": [d for d, keep in zip(durations, valid_mask) if keep]
+        "length": audio_lengths  # NEW: Replace input_length with raw sample counts
     }
     
+
 
 original_train_len = len(common_voice_train)
 original_test_len = len(common_voice_test)
@@ -561,19 +562,16 @@ class DataCollatorCTCWithPadding:
         return batch
 
 # 
-# Metrics and model initialization, feature extractor, and model loading
+# Metrics and model initialization, feature extractor, and model loading, (Enable Dynamic Padding)
 import evaluate
 data_collator = DataCollatorCTCWithPadding(
     processor=processor,
     padding=True,
-    max_length=int(16_000 * 15),     # cap at 15s
-    max_length_labels=512,
+    max_length=None,  # CRITICAL: Dynamic padding per batch
+    max_length_labels=None,  # Dynamic padding for labels
     pad_to_multiple_of=16,
     pad_to_multiple_of_labels=8,
 )
-# Load the built-in CER metric
-# cer_metric = load_metric("cer")
-cer_metric = evaluate.load("cer")
 
 
 def compute_metrics(pred):
@@ -622,9 +620,12 @@ print(f"Using device: {device}")
 
 training_args = TrainingArguments(
     output_dir="./wav2vec2-large-xlsr-cantonese",
-    group_by_length=True,
-    per_device_train_batch_size=16,
-    gradient_accumulation_steps=1,
+    group_by_length=True,  # MUST ENABLE THIS
+    per_device_train_batch_size=4,  # Reduced from 16
+    gradient_accumulation_steps=4,  # Maintains effective batch size 16
+    gradient_checkpointing=True,  # Add this line!
+    remove_unused_columns=False,  # Keep this FALSE to preserve 'length'
+    # Keep other settings unchanged
     evaluation_strategy="steps",
     eval_steps=400,
     num_train_epochs=10,
@@ -637,12 +638,10 @@ training_args = TrainingArguments(
     warmup_steps=500,
     save_steps=2376,
     save_total_limit=3,
-    dataloader_num_workers=0,
+    dataloader_num_workers=4,  # Increase for faster loading
     optim="adamw_8bit",
-    remove_unused_columns=False,
     torch_compile=False,
 )
-
 trainer = Trainer(
     model=model.to(device),
     data_collator=data_collator,
