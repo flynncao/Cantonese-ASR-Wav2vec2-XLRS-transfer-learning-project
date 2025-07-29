@@ -1,17 +1,33 @@
 [project]
-name = "myproject"
+name = "uv-playground"
 version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11" # able to downgrade python to find a compatible version for tensorflow,e etc.
 dependencies = [
-    "torch==2.6.0+cu118",
-    "torchaudio==2.6.0+cu118",
-    "torchvision==0.21.0+cu118",
+    "torch>=2.6.0",
+    "torchaudio>=2.6.0",
+    "torchvision>=0.21.0",
     "datasets==2.16.0",
     "transformers==4.50.0",
-    "huggingface-hub",
-    "numpy",
+    "huggingface_hub==0.30.1",
+]
+[tool.uv.sources]
+torch = [
+  { index = "torch-cu118", marker = "sys_platform == 'linux'"},
 ]
 
 [[tool.uv.index]]
-name = "torch==2.6.0+cu118"
-url = "https://download.pytorch.org/whl/cu118"
-default = true
+name = "torch-cu118"
+url = "https://download.pytorch.org/whl/cu118/"
+explicit = true
+
+[[tool.uv.index]]
+name = "torchaudio-cu118"
+url = "https://download.pytorch.org/whl/cu118/"
+explicit = true
+
+[[tool.uv.index]]
+name = "torchvision-cu118"
+url = "https://download.pytorch.org/whl/cu118/"
+explicit = true
