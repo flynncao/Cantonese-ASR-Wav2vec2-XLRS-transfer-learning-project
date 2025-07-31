@@ -487,7 +487,6 @@ def prepare_dataset_for_batching(batch, processor_obj=None):
         "labels": labels,
         "length": audio_lengths  # NEW: Replace input_length with raw sample counts
     }
-    
 
 
 original_train_len = len(common_voice_train)
@@ -617,12 +616,11 @@ print(f"Using device: {device}")
 # torch._dynamo.config.suppress_errors = True
 
 # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-
 training_args = TrainingArguments(
     output_dir="./wav2vec2-large-xlsr-cantonese",
     group_by_length=True,  # MUST ENABLE THIS
-    per_device_train_batch_size=4,  # Reduced from 16
-    gradient_accumulation_steps=4,  # Maintains effective batch size 16
+    per_device_train_batch_size=8,  # Reduced from 16
+    gradient_accumulation_steps=2,  # Maintains effective batch size 16
     gradient_checkpointing=True,  # Add this line!
     remove_unused_columns=False,  # Keep this FALSE to preserve 'length'
     # Keep other settings unchanged
@@ -642,6 +640,8 @@ training_args = TrainingArguments(
     optim="adamw_8bit",
     torch_compile=False,
 )
+
+
 trainer = Trainer(
     model=model.to(device),
     data_collator=data_collator,
